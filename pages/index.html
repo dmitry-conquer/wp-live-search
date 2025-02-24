@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Home page</title>
+  </head>
+  <body>
+    <div class="wrapper">
+      {{> header}}
+      <main>
+        <div data-livesearch id="live-search" class="bg-red-900">
+          <button aria-expanded="false" data-livesearch-button type="button">Open search</button>
+          <div data-livesearch-wrapper>
+            <input data-livesearch-input type="text" />
+            <div data-livesearch-container></div>
+          </div>
+        </div>
+      </main>
+      {{> footer}}
+    </div>
+    <script type="module" src="../src/scripts/main.ts" defer></script>
+  </body>
+</html>
