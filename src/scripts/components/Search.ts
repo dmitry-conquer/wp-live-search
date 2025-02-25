@@ -1,4 +1,4 @@
-import { ApiService } from "../services/ApiService";
+import { get } from "../services/api";
 import { Post, initialStateType, SearchOptions } from "../types";
 import templates from "../templates";
 
@@ -21,14 +21,14 @@ class Search {
     noResults: "No results found.",
     searching: "Searching...",
   };
-  private readonly options: SearchOptions = {
+  private options: SearchOptions = {
     siteName: window.location.host,
-    postTypes: ["posts", "pages"],
+    postTypes: [],
     showItems: 6,
   };
+  private rootElement: HTMLElement | null;
+  private wrapperElement: HTMLElement | null;
   private buttonElement: HTMLButtonElement | null;
-  private wrapperElement: HTMLButtonElement | null;
-  private rootElement: HTMLButtonElement | null;
   private inputElement: HTMLInputElement | null;
   private containerElement: HTMLElement | null;
   private state: initialStateType;
@@ -119,7 +119,7 @@ class Search {
   }
 
   async getPostTypeData(postType: string): Promise<Post[]> {
-    const response = await ApiService.get(
+    const response = await get(
       `https://${this.options.siteName}/wp-json/wp/v2/${postType}/?search=${this.inputElement?.value}`
     );
     if (response.success) {
