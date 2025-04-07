@@ -10,14 +10,3 @@ export const get = async (url: string) => {
     return { success: false, error: (error as Error).message };
   }
 };
-
-export const post = async <T, R = unknown>(url: string, data: T): Promise<R> => {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-  return response.json();
-};

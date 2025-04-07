@@ -1,9 +1,10 @@
+#live-search {
+}
+[data-livesearch-button] {
+}
 [data-livesearch-wrapper] {
-  display: none;
-  &.is-active {
-    display: block;
-  }
 }
 [data-livesearch-input] {
-  border: 1px solid #333333;
+}
+[data-livesearch-container] {
 }

@@ -13,4 +13,5 @@ export type SearchOptions = {
   siteName: string;
   postTypes: string[];
   showItems: number;
+  excludeKeyWords: string;
 };

@@ -1,6 +1,7 @@
 import { get } from "../services/api";
 import { Post, initialStateType, SearchOptions } from "../types";
 import templates from "../templates";
+import { SEARCH_MESSAGES } from "../messages";
 
 class Search {
   private readonly selectors: Record<string, string> = {
@@ -16,21 +17,19 @@ class Search {
   private readonly stateClasses: Record<string, string> = {
     isActive: "is-active",
   };
-  private readonly messages: Record<string, string> = {
-    startSearching: "Please enter a search term.",
-    noResults: "No results found.",
-    searching: "Searching...",
-  };
   private options: SearchOptions = {
     siteName: window.location.host,
     postTypes: [],
     showItems: 6,
+    excludeKeyWords: "",
   };
   private rootElement: HTMLElement | null;
   private wrapperElement: HTMLElement | null;
   private buttonElement: HTMLButtonElement | null;
   private inputElement: HTMLInputElement | null;
   private containerElement: HTMLElement | null;
+  private timeout: number | null = null;
+  private searchDelay: number = 500;
   private state: initialStateType;
 
   constructor(options?: SearchOptions) {
@@ -44,30 +43,56 @@ class Search {
       results: [],
     });
 
+    if (!this.isReady) return;
     this.bindEvents();
   }
 
-  bindEvents() {
+  private bindEvents() {
     this.inputElement?.addEventListener("input", this.onInput);
-    this.buttonElement?.addEventListener("click", this.onButtonClick);
+    this.buttonElement?.addEventListener("click", this.toggleSearch);
+    document.documentElement.addEventListener("click", this.onClickOutside);
   }
 
-  onButtonClick = () => {
-    this.wrapperElement?.classList.toggle(this.stateClasses.isActive);
-    this.buttonElement?.setAttribute(
-      this.attributes.ariaExpanded,
-      this.wrapperElement?.classList.contains(this.stateClasses.isActive) ? "true" : "false"
+  private isNotSearchRelated(event: MouseEvent) {
+    return !this.wrapperElement?.contains(event.target as Node) && !this.buttonElement?.contains(event.target as Node);
+  }
+
+  private onClickOutside = (e: MouseEvent) => {
+    if (this.isNotSearchRelated(e)) {
+      this.wrapperElement?.classList.remove(this.stateClasses.isActive);
+      this.buttonElement?.setAttribute(this.attributes.ariaExpanded, "false");
+    }
+  };
+
+  private isReady(): boolean {
+    return Boolean(
+      this.rootElement && this.inputElement && this.buttonElement && this.containerElement && this.wrapperElement
     );
+  }
+
+  private toggleSearch = () => {
+    if (!this.wrapperElement) return;
+    const isOpen = this.wrapperElement?.classList.contains(this.stateClasses.isActive);
+    this.wrapperElement?.classList.toggle(this.stateClasses.isActive, !isOpen);
+    this.buttonElement?.setAttribute(this.attributes.ariaExpanded, (!isOpen).toString());
     this.inputElement?.focus();
   };
 
   onInput = () => {
     if (this.inputElement?.value === "") {
       this.state.results = [];
-      this.showMessage(this.messages.startSearching);
+      this.showMessage(SEARCH_MESSAGES.startSearching);
       return;
     }
-    this.getData();
+
+    this.showMessage(SEARCH_MESSAGES.searching);
+    if (this.timeout) {
+      clearTimeout(this.timeout);
+    }
+
+    this.timeout = window.setTimeout(() => {
+      this.getData();
+    }, this.searchDelay);
   };
 
   getResultsProxy(initialState: initialStateType) {
@@ -90,13 +115,33 @@ class Search {
   }
 
   filterResults(): Post[] {
-    const filteredIResults = this.state.results
-      .filter((filteredItem: Post) =>
-        filteredItem.title.rendered.toLowerCase().includes((this.inputElement?.value ?? "").toLowerCase())
-      )
-      .slice(0, this.options.showItems);
+    let results = this.state.results;
+    results = this.filterByTitle(results);
+    results = this.filterByExcludeWords(results);
 
-    return filteredIResults;
+    return results.slice(0, this.options.showItems);
+  }
+
+  stringToArray(string: string): string[] {
+    return string.split(",").map(value => value.trim());
+  }
+
+  filterByTitle(results: Post[]) {
+    return results.filter((filteredItem: Post) =>
+      filteredItem.title.rendered.toLowerCase().includes((this.inputElement?.value ?? "").toLowerCase())
+    );
+  }
+
+  filterByExcludeWords(value: Post[]) {
+    const rawExclude = this.options.excludeKeyWords?.trim();
+    if (rawExclude) {
+      return value.filter(
+        (filteredItem: Post) =>
+          !this.stringToArray(rawExclude).some((word: string) =>
+            filteredItem.title.rendered.toLowerCase().includes(word.toLowerCase())
+          )
+      );
+    } else return value;
   }
 
   updateUI() {
@@ -107,26 +152,23 @@ class Search {
         this.containerElement.innerHTML = template;
       }
     } else {
-      this.showMessage(this.messages.noResults);
+      this.showMessage(SEARCH_MESSAGES.noResults);
     }
   }
 
   async getData(): Promise<void> {
-    this.showMessage(this.messages.searching);
     const promises = this.options.postTypes.map((postType: string) => this.getPostTypeData(postType));
     const results = await Promise.all(promises);
     this.state.results = results.flat();
   }
 
   async getPostTypeData(postType: string): Promise<Post[]> {
-    const response = await get(
-      `https://${this.options.siteName}/wp-json/wp/v2/${postType}/?search=${this.inputElement?.value}`
-    );
-    if (response.success) {
-      return response.data;
-    } else {
-      return [];
+    const url = new URL(`/wp-json/wp/v2/${postType}/`, `https://${this.options.siteName}`);
+    if (this.inputElement?.value) {
+      url.searchParams.set("search", this.inputElement.value);
     }
+    const response = await get(url.toString());
+    return response.success ? response.data : [];
   }
 }
 

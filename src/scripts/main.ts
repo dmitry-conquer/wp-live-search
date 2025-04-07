@@ -9,13 +9,14 @@ declare const ajax_obj: {
 
 document.addEventListener("DOMContentLoaded", () => {
   const initializeSearch = async () => {
-    const response = await get(`${ajax_obj.ajax_url}?action=get_search_data`);
+    const response = await get(`${ajax_obj?.ajax_url}?action=get_search_data`);
     if (response.success) {
       const data = response.data;
       new Search({
-        siteName: data.siteName,
-        postTypes: data.postTypes,
-        showItems: data.showItems,
+        siteName: data.site_name,
+        postTypes: data.post_types_to_search,
+        showItems: data.show_results,
+        excludeKeyWords: data.exclude_key_words,
       });
     } else {
       console.error(response.error);
